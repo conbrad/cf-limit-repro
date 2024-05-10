@@ -20,7 +20,7 @@ export class WebsocketServer extends DurableObject<Env> {
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
 		const req = JSON.parse(message.toString());
 		console.log("Message received")
-		await this.env.db.prepare(`insert into failed_import_urls (id, url) values (?, ?)`).bind(crypto.randomUUID(), req.url).run()
+		await this.env.db.prepare(`insert into links (id, url) values (?, ?)`).bind(crypto.randomUUID(), req.url).run()
 		ws.send(JSON.stringify({ error: false, url: req.url }))
 	}
 }
