@@ -2,11 +2,15 @@ name = "cf-limit-repro"
 main = "src/index.ts"
 compatibility_date = "2024-05-02"
 
+[[d1_databases]]
+    binding = "db"
+    database_name = "link-test"
+    database_id = "4a7186ad-94de-4d05-a179-6e5457b5e5b8"
+
 [[durable_objects.bindings]]
-  name = "link_limit"
-  class_name = "LinkManager"
+  name = "websocket_server"
+  class_name = "WebsocketServer"
 
 [[migrations]]
   tag = "v1"
-  new_classes = ["LinkManager"]
-
+  new_classes = ["WebsocketServer"]
