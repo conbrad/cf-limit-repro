@@ -17,8 +17,9 @@
 
 <script>
     const url = new URL("https://cf-limit-repro.storeader.workers.dev");
-    url.protocol = "ws:";
-	url.pathname = "/ws";
+    url.protocol = "wss";
+    url.pathname = "/ws";
+
     this.ws = new WebSocket(url);
     if (!this.ws) {
         throw new Error("server didn't accept ws");
