@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Minimal Websocket Repro</title>
+    <script type="text/javascript" src="responding-ws.js"></script>
+</head>
+
+<body>
+    <p>
+        This test will connect to websocket server hosted by the deployed cf worker defined by index.ts.
+        Click the button to choose the `export-2024-csv.csv` file to upload all the urls in that file to the worker.
+    </p>
+
+    <button id="file-button">Click to upload</button>
+</body>
+
+<script>
+    const url = new URL("https://cf-limit-repro.storeader.workers.dev");
+    url.protocol = "wss";
+    url.pathname = "/ws";
+
+    this.ws = new WebSocket(url);
+    if (!this.ws) {
+        throw new Error("server didn't accept ws");
+    }
+
+    this.ws.addEventListener("open", () => {
+        console.log("Opened websocket");
+    });
+    this.ws.addEventListener("message", ({ data }) => {
+        const res = JSON.parse(data);
+        console.log(res)
+    });
+    this.ws.addEventListener("close", () => {
+        console.log("Closed websocket");
+    });
+
+    function linkify(text) {
+        var urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+        return text.replace(urlRegex, function (url) {
+            return url
+        });
+    }
+
+    document.getElementById('file-button').addEventListener('click', function () {
+        // Create a file input element
+        const fileInput = document.createElement('input');
+        fileInput.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            console.log(file)
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const fileContent = event.target.result;
+
+                var urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+                const indexes = [...fileContent.matchAll(urlRegex)].map(a => a.index);
+                console.log(indexes); // [2, 25, 27, 33]
+
+                const urls = []
+                for (index of indexes) {
+                    const url = fileContent.substr(index).split(',')[0]
+                    urls.push(url)
+                    ws.send(JSON.stringify({ url: url }))
+                }
+
+                console.log(urls)
+            };
+            reader.readAsText(file);
+        });
+        fileInput.type = 'file';
+        fileInput.accept = '.csv'; // Set the file type to .txt
+        fileInput.click();
+    });
+</script>
+
+</html>

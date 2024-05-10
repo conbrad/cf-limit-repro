@@ -1,49 +1,85 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.toml`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+import { DurableObject } from "cloudflare:workers";
 
-import handleProxy from './proxy';
-import handleRedirect from './redirect';
-import apiRouter from './router';
+export interface Env {
+	link_limit: DurableObjectNamespace<LinkManager>;
+}
 
-// Export a default object containing event handlers
-export default {
-	// The fetch handler is invoked when this worker receives a HTTP(S) request
-	// and should return a Response (optionally wrapped in a Promise)
-	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		// You'll find it helpful to parse the request.url string into a URL object. Learn more at https://developer.mozilla.org/en-US/docs/Web/API/URL
-		const url = new URL(request.url);
+// Durable Object
+export class LinkManager extends DurableObject {
 
-		// You can get pretty far with simple logic like if/switch-statements
+  async getLinks() {
+    let value = (await this.ctx.storage.get("links")) || [];
+    return value;
+  }
+
+  async getCount() {
+    let value: string[] = (await this.ctx.storage.get("links")) || [];
+    return value.length
+  }
+
+  async addLink(url: string) {
+    let links: string[] = (await this.ctx.storage.get("links")) || [];
+    links.push(url)
+    // You do not have to worry about a concurrent request having modified the value in storage.
+    // "input gates" will automatically protect against unwanted concurrency.
+    // Read-modify-write is safe.
+    await this.ctx.storage.put("links", links);
+    return links;
+  }
+}
+
+async function handleSession(websocket: WebSocket, env: Env) {
+	websocket.accept()
+	websocket.addEventListener("message", async ({ data }) => {
+	  const req = JSON.parse(data.toString());
+	  console.log("Message received")
+	  const id = env.link_limit.idFromName("links")
+	  const stub = env.link_limit.get(id);
+	  stub.addLink(req.url)
+	  // await env.request_queue_binding.send({ id_token: req.id_token, url: req.url });
+	  websocket.send(JSON.stringify({ error: false, url: req.url }))
+	})
+  
+	websocket.addEventListener("close", async evt => {
+	  // Handle when a client closes the WebSocket connection
+	  console.log(evt)
+	})
+  }
+  
+  
+  const websocketHandler = async (request: Request, env: Env) => {
+	const upgradeHeader = request.headers.get("Upgrade")
+	if (upgradeHeader !== "websocket") {
+	  return new Response("Expected websocket", { status: 400 })
+	}
+  
+	const [client, server] = Object.values(new WebSocketPair())
+	await handleSession(server, env)
+  
+	return new Response(null, {
+	  status: 101,
+	  webSocket: client
+	})
+  }
+  
+  export default {
+	async fetch(request: Request, env: Env): Promise<Response> {
+	  console.log(env)
+	  try {
+		const url = new URL(request.url)
 		switch (url.pathname) {
-			case '/redirect':
-				return handleRedirect.fetch(request, env, ctx);
-
-			case '/proxy':
-				return handleProxy.fetch(request, env, ctx);
+		  case '/ws':
+			return websocketHandler(request, env)
+		  case '/count':
+			const id = env.link_limit.idFromName("links")
+			const stub = env.link_limit.get(id);
+			return new Response((await stub.getCount()).toString())
+		  default:
+			return new Response("Not authorized", { status: 401 })
 		}
-
-		if (url.pathname.startsWith('/api/')) {
-			// You can also use more robust routing
-			return apiRouter.handle(request);
-		}
-
-		return new Response(
-			`Try making requests to:
-      <ul>
-      <li><code><a href="/redirect?redirectUrl=https://example.com/">/redirect?redirectUrl=https://example.com/</a></code>,</li>
-      <li><code><a href="/proxy?modify&proxyUrl=https://example.com/">/proxy?modify&proxyUrl=https://example.com/</a></code>, or</li>
-      <li><code><a href="/api/todos">/api/todos</a></code></li>`,
-			{ headers: { 'Content-Type': 'text/html' } }
-		);
-	},
-};
+	  } catch (err) {
+		console.log(err)
+		return new Response("error")
+	  }
+	}
+  }
