@@ -10,3 +10,7 @@ compatibility_date = "2024-05-02"
   tag = "v1"
   new_classes = ["LinkManager"]
 
+[[d1_databases]]
+    binding = "db"
+    database_name = "link-test"
+    database_id = "4a7186ad-94de-4d05-a179-6e5457b5e5b8"

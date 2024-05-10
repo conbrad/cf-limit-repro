@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 
 export interface Env {
 	link_limit: DurableObjectNamespace<LinkManager>;
+	db: D1Database
 }
 
 // Durable Object
@@ -33,9 +34,12 @@ async function handleSession(websocket: WebSocket, env: Env) {
 	websocket.addEventListener("message", async ({ data }) => {
 	  const req = JSON.parse(data.toString());
 	  console.log("Message received")
-	  const id = env.link_limit.idFromName("links")
-	  const stub = env.link_limit.get(id);
-	  stub.addLink(req.url)
+	//   const id = env.link_limit.idFromName("links")
+	//   const stub = env.link_limit.get(id);
+	//   stub.addLink(req.url)
+		await env.db.prepare(`
+		insert into links (id, url) values (?, ?)
+	`).bind(crypto.randomUUID(), req.url).run()
 	  // await env.request_queue_binding.send({ id_token: req.id_token, url: req.url });
 	  websocket.send(JSON.stringify({ error: false, url: req.url }))
 	})
