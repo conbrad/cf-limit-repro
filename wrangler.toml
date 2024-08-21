@@ -2,10 +2,16 @@ name = "cf-limit-repro"
 main = "src/index.ts"
 compatibility_date = "2024-05-02"
 
-[[d1_databases]]
-    binding = "db"
-    database_name = "link-test"
-    database_id = "4a7186ad-94de-4d05-a179-6e5457b5e5b8"
+[[queues.producers]]
+ queue = "test-queue"
+ binding = "test_queue_binding"
+
+[[queues.consumers]]
+  queue = "test-queue"
+  max_batch_size = 1
+  max_batch_timeout = 30
+  max_retries = 10
+  dead_letter_queue = "test-queue-dlq"
 
 [[durable_objects.bindings]]
   name = "websocket_server"
