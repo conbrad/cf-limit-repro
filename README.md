@@ -1,3 +1,3 @@
-Cloudflare workers websocket server example -- sending thousands of links to the websocket that attempts to store them in a Durable Object
+Cloudflare workers websocket server example -- sending thousands of urls to a websocket that attempts to fetch and return.
 
 Deploy with `npx wrangler deploy src/index.ts`
