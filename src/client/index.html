@@ -3,12 +3,14 @@
 
 <head>
     <title>Minimal Websocket Repro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/readability/0.5.0/Readability.min.js" integrity="sha512-XZ0uNdz5h40R7SJavnsSp/TnGvu6WY+U8Q75gZx6orlKCIzutPOd4g+m/zcq7HA1XL8bAQtYLs1zhoCDb4L9sA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="parseRaindropHtml.js"></script>
 </head>
 
 <body>
     <p>
         This test will connect to websocket server hosted by the deployed cf worker defined by index.ts.
-        Click the button to send 2900 messages to the websocket server.
+        Click the button upload the html file to start the test. Eventually browser websocket client with receive a 1006 error.
     </p>
 
     <button id="file-button">Click to upload</button>
@@ -35,16 +37,28 @@
         console.log("Closed websocket");
     });
 
-    const sleep = (ms) => {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    document.getElementById('file-button').addEventListener('click', async function () {
-        for (let i = 0; i < 9999; i++) {
-            await sleep(2000)
-            ws.send(JSON.stringify({ url: "https://www.anthropic.com/news/claude-3-5-sonnet" }))
-        }
+    document.getElementById('file-button').addEventListener('click', function () {
+        // Create a file input element
+        const fileInput = document.createElement('input');
+        fileInput.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            console.log(file)
+            const reader = new FileReader();
+            reader.readAsText(file, "UTF-8");
+            reader.onload = function (event) {
+                const fileContent = event.target.result;
+                const urls = parsePocketHtml(fileContent)
+                urls.forEach(url => {
+                    console.log(`Sending url: ${url}`)
+                    ws.send(JSON.stringify({ url }))
+                });
+            };
+        });
+        fileInput.type = 'file';
+        fileInput.accept = '.html';
+        fileInput.click();
     });
+
 </script>
 
 </html>
