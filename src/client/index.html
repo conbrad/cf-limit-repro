@@ -10,7 +10,7 @@
 <body>
     <p>
         This test will connect to websocket server hosted by the deployed cf worker defined by index.ts.
-        Click the button upload the html file to start the test. Eventually browser websocket client with receive a 1006 error.
+        Click the button upload the html file to start the test. Eventually browser websocket client will receive a close event with a 1006 error.
     </p>
 
     <button id="file-button">Click to upload</button>
@@ -33,8 +33,11 @@
         const res = JSON.parse(data);
         console.log(res)
     });
-    this.ws.addEventListener("close", () => {
-        console.log("Closed websocket");
+    this.ws.addEventListener("error", function(ev) {
+      console.log(`Websocket error, code: ${ev.code}, event: ${ev.reason}`);
+    });
+    this.ws.addEventListener("close", function(ev) {
+        console.log(`Closed websocket, code: ${ev.code}, event: ${ev.reason}`);
     });
 
     document.getElementById('file-button').addEventListener('click', function () {
